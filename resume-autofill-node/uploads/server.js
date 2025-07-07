@@ -32,12 +32,34 @@ app.get("/", (req, res) => {
 });
 
 // Upload route
+
+const { exec } = require("child_process");
+
+// Inside app.post("/upload"...
 app.post("/upload", upload.single("resume"), (req, res) => {
-    if (!req.file) {
-        return res.status(400).send("No file uploaded.");
-    }
-    res.send(`File uploaded successfully: ${req.file.filename}`);
+    if (!req.file) return res.send("No file uploaded.");
+
+    const filePath = `uploads/${req.file.filename}`;
+
+    exec(`python resume_parser.py ${filePath}`, (error, stdout, stderr) => {
+        if (error) {
+            console.error("Error running Python script:", error);
+            return res.status(500).send("Failed to parse resume.");
+        }
+
+        try {
+            const parsedData = JSON.parse(stdout);
+            res.json({
+                message: "Resume parsed successfully!",
+                data: parsedData
+            });
+        } catch (err) {
+            console.error("Invalid JSON from Python script:", stdout);
+            res.status(500).send("Failed to parse JSON output.");
+        }
+    });
 });
+
 
 // Start server
 app.listen(PORT, () => {
